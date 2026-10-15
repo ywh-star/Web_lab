@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>异步寻宝游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", serif;
+        }
+        body {
+            background: #080c14;
+            color: #e8e8e8;
+            min-height: 100vh;
+            overflow-x:hidden;
+            background-image: url("");
+        }
+        .container{
+            width:100%;
+            min-height:100vh;
+            background: radial-gradient(circle at center, #192438 0%, #05070b 100%);
+            position:relative;
+            padding:30px;
+        }
+        /* 标题 */
+        h1 {
+            text-align:center;
+            font-size:48px;
+            color:#ffd700;
+            letter-spacing:6px;
+            margin-bottom:24px;
+            text-shadow:0 0 14px #ffc80066;
+            position:relative;
+        }
+        h1::before, h1::after{
+            content:"";
+            display:inline-block;
+            width:80px;
+            height:2px;
+            background:linear-gradient(90deg,transparent,#ffd700,transparent);
+            vertical-align:middle;
+            margin:0 20px;
+        }
+        .layout-wrap{
+            display:grid;
+            grid-template-columns:220px 1fr 260px;
+            gap:20px;
+            max-width:1800px;
+            margin:0 auto;
+        }
+        /* ==========左侧 纵向步骤时间线 完全复刻截图========== */
+        .left-timeline{
+            display:flex;
+            flex-direction:column;
+            gap:48px;
+            padding-top:30px;
+        }
+        .timeline-item{
+            display:flex;
+            align-items:center;
+            gap:14px;
+            position:relative;
+        }
+        .timeline-line{
+            position:absolute;
+            left:22px;
+            top:44px;
+            width:2px;
+            height:48px;
+            background:#444c5c;
+        }
+        .timeline-dot{
+            width:44px;
+            height:44px;
+            border-radius:50%;
+            border:2px solid #7a6c4c;
+            background:#141b2b;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:22px;
+            transition:0.7s all ease;
+            z-index:2;
+        }
+        .timeline-dot.active{
+            border-color:#ffd700;
+            box-shadow: 0 0 18px #ffd700, inset 0 0 12px #ffd70044;
+        }
+        .timeline-dot.fail{
+            border-color:#ff4444;
+            box-shadow:0 0 16px #ff444480;
+        }
+        .timeline-label{
+            font-size:19px;
+            color:#b8bcca;
+            transition:0.5s;
+        }
+        .timeline-label.active{
+            color:#ffd700;
+        }
+
+        /* ==========中间神庙宝箱主场景 ========== */
+        .center-scene{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            min-height:520px;
+            position:relative;
+        }
+        .chest-box{
+            font-size:200px;
+            transition:all 0.9s ease;
+            filter:drop-shadow(0 0 0px #ffd700);
+        }
+        .chest-box.glow{
+            filter:drop-shadow(0 0 40px #ffd700);
+            animation:chestShine 1.4s infinite alternate;
+        }
+        @keyframes chestShine{
+            from{transform:scale(1);}
+            to{transform:scale(1.07);}
+        }
+        /* 悬浮图标 */
+        .icon-item{
+            position:absolute;
+            font-size:56px;
+            opacity:0.25;
+            transition:0.5s;
+        }
+        .icon-item.active{
+            opacity:0.9;
+            filter:drop-shadow(0 0 12px #ffd700);
+        }
+        .icon-key{top:80px;left:22%;}
+        .icon-map{top:60px;left:50%;transform:translateX(-50%);}
+        .icon-gem{top:80px;right:22%;}
+        .icon-scroll{bottom:140px;left:20%;}
+        .icon-trap{bottom:140px;right:20%;}
+
+        /* ==========右侧日志面板 ========== */
+        .right-log{
+            background:#141b2b;
+            border:1px solid #424b66;
+            border-radius:10px;
+            padding:20px;
+            height:540px;
+            overflow-y:auto;
+            box-shadow:0 0 12px #00000066;
+        }
+        .log-header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            border-bottom:1px solid #394258;
+            padding-bottom:10px;
+            margin-bottom:16px;
+        }
+        .log-title{
+            color:#ffd700;
+            font-size:18px;
+        }
+        .log-close{
+            color:#999;
+            cursor:default;
+        }
+        .log-row{
+            padding:10px 8px;
+            margin-bottom:8px;
+            border-radius:6px;
+            font-size:15px;
+            animation:fadeIn 0.4s;
+        }
+        .log-wait{background:#202b46;color:#92b6ff;}
+        .log-success{background:#1a3832;color:#94f0b6;}
+        .log-error{background:#3b1c22;color:#ff9292;}
+        @keyframes fadeIn{
+            from{opacity:0;transform:translateY(6px);}
+            to{opacity:1;transform:translateY(0);}
+        }
+
+        /* ==========底部流程图面板 ========== */
+        .bottom-flow{
+            max-width:1700px;
+            margin:20px auto 0;
+            background:#141b2b;
+            border:1px solid #424b66;
+            border-radius:10px;
+            padding:20px;
+        }
+        .flow-canvas{
+            width:100%;
+            height:120px;
+            background:#0f1422;
+            border-radius:6px;
+            display:flex;
+            align-items:center;
+            gap:8px;
+            padding:12px;
+            overflow-x:auto;
+        }
+        .flow-node{
+            width:36px;height:36px;
+            border-radius:4px;
+            flex-shrink:0;
+            transition:0.4s;
+        }
+        .flow-arrow{
+            color:#ffd700;
+        }
+
+        /* 按钮区域 */
+        .btn-wrap{
+            text-align:center;
+            margin-top:24px;
+        }
+        #startGame{
+            padding:14px 44px;
+            font-size:20px;
+            background:linear-gradient(90deg,#9c7209,#ffd700);
+            border:none;
+            border-radius:10px;
+            color:#080808;
+            font-weight:bold;
+            cursor:pointer;
+        }
+        #startGame:disabled{
+            opacity:0.55;
+            cursor:not-allowed;
+        }
+        .back-arrow{
+            position:absolute;
+            top:32px;
+            left:32px;
+            font-size:36px;
+            color:#ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="back-arrow">←</div>
+        <h1>异步寻宝游戏</h1>
+        <div class="layout-wrap">
+            <!--左侧时间线-->
+            <div class="left-timeline">
+                <div class="timeline-item">
+                    <div class="timeline-dot" id="dot0">🔥</div>
+                    <div class="timeline-label" id="lab0">寻找线索</div>
+                    <div class="timeline-line"></div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot" id="dot1">📜</div>
+                    <div class="timeline-label" id="lab1">解码古文</div>
+                    <div class="timeline-line"></div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot" id="dot2">🧩</div>
+                    <div class="timeline-label" id="lab2">解开谜题</div>
+                    <div class="timeline-line"></div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot" id="dot3">🏛️</div>
+                    <div class="timeline-label" id="lab3">神庙探索</div>
+                    <div class="timeline-line"></div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot" id="dot4">📦</div>
+                    <div class="timeline-label" id="lab4">开启宝箱</div>
+                </div>
+            </div>
+
+            <!--中间主场景-->
+            <div class="center-scene">
+                <div class="icon-item icon-key">🗝️</div>
+                <div class="icon-item icon-map">🗺️</div>
+                <div class="icon-item icon-gem">💎</div>
+                <div class="icon-item icon-scroll">📜</div>
+                <div class="icon-item icon-trap">⚙️</div>
+                <div class="chest-box" id="chest">🏺</div>
+            </div>
+
+            <!--右侧日志面板-->
+            <div class="right-log">
+                <div class="log-header">
+                    <div class="log-title">探险日志</div>
+                    <div class="log-close">×</div>
+                </div>
+                <div id="logContainer"></div>
+            </div>
+        </div>
+
+        <!--底部流程图区域-->
+        <div class="bottom-flow">
+            <div class="flow-canvas" id="flowBox">
+                <!--动态生成流程图节点-->
+            </div>
+        </div>
+
+        <div class="btn-wrap">
+            <button id="startGame">开始寻宝探险</button>
+        </div>
+    </div>
+
+<script src="treasure-async.js"></script>
+</body>
+</html>
